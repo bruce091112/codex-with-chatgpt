@@ -72,10 +72,14 @@ whatever data it needs by itself.
    Each workspace also has exactly ONE ChatGPT connector. Do not create a
    second connector for the same workspace. Other workspaces may have their
    own connectors — never edit those.
-7. After first-time setup, never ask the user to approve writing C2C's local
-   settings directory. Run `c2c sandbox-allow --json` (idempotent). If it fails
-   with EPERM / Operation not permitted, request elevated permissions and retry
-   ONCE. After `{ "alreadyAllowed": true }` or `{ "added": true }`, stay silent.
+7. C2C needs its local settings directory in Codex's sandbox allowlist. Run
+   `c2c sandbox-allow --json` (idempotent).
+   - `{ "alreadyAllowed": true }` → nothing changed; continue without comment.
+   - `{ "added": true }` → tell the user one line, e.g.
+     "已把 C2C 的設定目錄加入 Codex 沙箱的可寫入目錄（`<codex-home>/config.toml`）。"
+   - EPERM / Operation not permitted → tell the user that writing the allowlist
+     needs elevated permissions and what will be added, then request elevation
+     and retry ONCE. If they decline, stop and report; do not work around it.
 8. ChatGPT pages: only the URLs in **In-app browser (ChatGPT)**. Never start
    from chatgpt.com and click through menus.
 9. **Doctor gate.** After `c2c doctor --json`, do not `goto` ChatGPT and do not
@@ -199,7 +203,8 @@ that close the tab, hide the window, or stall on the settings page.
 ## Daily update check
 
 At the START of every workflow below (before anything else), run these two
-commands (both are cheap / cached; never mention them unless an update exists):
+commands (both are cheap / cached). A check that changes nothing needs no
+comment; anything that does change something is reported to the user:
 
 1. `c2c update-check --json` (do not pass `-w`)
 2. `c2c sandbox-allow --json` (do not pass `-w`) — writes the C2C state directory into Codex's
@@ -207,8 +212,9 @@ commands (both are cheap / cached; never mention them unless an update exists):
    Windows: `%LOCALAPPDATA%\codex-with-chatgpt`; config file is
    `<codex-home>/config.toml`; see **Locations**).
    If already allowlisted, this is a no-op and does not trigger elevation.
+   If it adds the entry or needs elevation, follow Golden rule 7 (tell the user).
 
-- `{ "updateAvailable": false }` → continue silently. Never mention the check.
+- `{ "updateAvailable": false }` → nothing to report; continue.
 - `{ "updateAvailable": true }` → tell the user one line:
   "检测到 Codex with ChatGPT 有新版本，我先更新一下（约 1 分钟），随后继续你的任务。"
   Then run the update workflow below, and CONTINUE the original task afterwards.
@@ -745,8 +751,8 @@ the previous public address is gone. Doctor already started a new one.
 | ChatGPT says tool call failed / 401 | token expired or revoked → re-pair (new pairing code + authorize) |
 | Pairing code rejected/expired | `c2c pair --json` for a fresh code |
 | Same explicit ChatGPT setup/reconnect browser configuration step fails twice after repair | Stop automating ChatGPT settings and use **Guided manual ChatGPT setup fallback**. Do not count browser/js timeout, loading/generating, or login/2FA waiting as failures. |
-| Port conflict | handled automatically; never surface to the user |
-| Every new chat “repairs” / cannot write the log or settings directory | `c2c sandbox-allow --json` (once). Do not ask the user. |
-| cloudflared missing | install it yourself (brew/winget), then retry |
+| Port conflict | handled automatically by c2c; mention it in one line if it affects what the user sees |
+| Every new chat “repairs” / cannot write the log or settings directory | `c2c sandbox-allow --json` (once), following Golden rule 7: report what was added, and say so before requesting elevation. |
+| cloudflared missing | Tell the user cloudflared is required for the tunnel and ask before installing it (brew/winget). After they agree, install it and retry; if they decline, stop and report. |
 | Sidebar has no「项目」 | Ask the user to hover「聊天」, click the …, choose「按项目整理」 |
 | Collection page is the wrong Project | Ask the user to open the named collection and say「已找到」, or accept long-chat |
